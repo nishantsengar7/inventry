@@ -5,19 +5,19 @@ from pydantic import BaseModel
 
 
 class CategoryCreate(BaseModel):
-    name: str
+    name:        str
     description: Optional[str] = None
 
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
+    name:        Optional[str] = None
     description: Optional[str] = None
 
 
-class CategoryOut(BaseModel):
-    id: int
-    name: str
+class CategoryResponse(BaseModel):
+    id:          int
+    name:        str
     description: Optional[str]
-    created_at: datetime
+    created_at:  datetime
 
     model_config = {"from_attributes": True}

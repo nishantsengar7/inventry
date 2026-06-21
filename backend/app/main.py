@@ -1,70 +1,76 @@
 """
 main.py – FastAPI application entry point.
 
-Startup order:
-  1. Create all DB tables (if they don't exist)
-  2. Seed a default admin user (if none exists)
+Startup sequence:
+  1. Create all DB tables via SQLAlchemy metadata (idempotent)
+  2. Seed demo data if the users table is empty
   3. Register all routers
-  4. Configure CORS
+  4. Configure CORS for development
 """
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
-from app.database import engine, SessionLocal
-import app.models  # noqa: F401 – import models so metadata is populated
+from app.database import engine, SessionLocal, check_db_connection
+from app.database import Base  # noqa: F401 – keep for create_all
 
-from app.routes import auth, categories, suppliers, products, transactions
-from app.models.user import User
-from app.utils.auth import hash_password
+# Import ALL models so their tables are registered in metadata
+import app.models  # noqa: F401
+
+# Import all route modules
+from app.routes import auth, categories, suppliers, products, transactions, dashboard
+from app.utils.seed import seed_database
 
 
-# ── Lifespan (runs on startup & shutdown) ────────────────────
+# ── Lifespan context manager ──────────────────────────────────
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # ── Startup ──────────────────────────────────────────────
-    # Create tables (idempotent – won't drop existing data)
-    from app.database import Base
-    Base.metadata.create_all(bind=engine)
+async def lifespan(application: FastAPI):
+    """Run startup tasks before yielding, and cleanup on shutdown."""
 
-    # Seed default admin user
+    # 1. Create tables (skip existing ones – safe to run on every boot)
+    Base.metadata.create_all(bind=engine)
+    print("✅  Database tables ensured.")
+
+    # 2. Seed demo data (no-op if data already exists)
     db = SessionLocal()
     try:
-        if not db.query(User).filter(User.username == "admin").first():
-            admin = User(
-                username="admin",
-                email="admin@inventory.local",
-                hashed_password=hash_password("admin123"),
-                is_active=True,
-                is_admin=True,
-            )
-            db.add(admin)
-            db.commit()
-            print("✅  Default admin user created  (admin / admin123)")
-        else:
-            print("✅  Admin user already exists")
+        seed_database(db)
     finally:
         db.close()
 
-    yield  # Application is running
+    yield  # ── Application is live ──────────────────────────────
 
-    # ── Shutdown (add cleanup here if needed) ─────────────────
-    print("👋  Shutting down…")
+    # Shutdown
+    print("👋  Inventory API shutting down.")
 
 
 # ── FastAPI instance ──────────────────────────────────────────
+
 app = FastAPI(
-    title="Inventory Management API",
-    description="REST API for the Inventory Management System",
+    title="Inventory Management System",
+    description=(
+        "AI-Enhanced Inventory Management REST API\n\n"
+        "## Authentication\n"
+        "Use `POST /auth/login` to obtain a JWT token, "
+        "then click **Authorize** and enter `Bearer <token>`.\n\n"
+        "**Demo credentials:**\n"
+        "- Admin: `admin@demo.com` / `admin123`\n"
+        "- Viewer: `viewer@demo.com` / `viewer123`"
+    ),
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-# ── CORS ──────────────────────────────────────────────────────
-# In production restrict allow_origins to your actual frontend domain.
+
+# ── CORS middleware ───────────────────────────────────────────
+# Allows all origins in development.
+# In production, replace "*" with your frontend domain.
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -73,22 +79,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────
+
+# ── Include routers ───────────────────────────────────────────
+
 app.include_router(auth.router)
 app.include_router(categories.router)
 app.include_router(suppliers.router)
 app.include_router(products.router)
 app.include_router(transactions.router)
+app.include_router(dashboard.router)
 
 
-# ── Health check ──────────────────────────────────────────────
+# ── System routes ─────────────────────────────────────────────
+
 @app.get("/health", tags=["System"], summary="Health check")
 def health():
-    """Returns 200 OK when the API is running."""
-    return {"status": "ok", "version": "1.0.0"}
+    """
+    Returns 200 OK when the API is running.
+    Also reports whether the PostgreSQL database is reachable.
+    """
+    db_ok = check_db_connection()
+    return {
+        "status":   "ok",
+        "database": "connected" if db_ok else "unreachable",
+        "version":  "1.0.0",
+    }
 
 
-# ── Root redirect ─────────────────────────────────────────────
 @app.get("/", tags=["System"], include_in_schema=False)
 def root():
-    return {"message": "Inventory Management API – visit /docs for Swagger UI"}
+    return {
+        "message": "Inventory Management API is running.",
+        "docs":    "/docs",
+        "health":  "/health",
+    }

@@ -1,7 +1,9 @@
 # models/__init__.py
-# Import all models here so that Base.metadata.create_all() picks them up.
+# Import all models so Alembic and SQLAlchemy metadata can detect them.
 from .user        import User
 from .category    import Category
 from .supplier    import Supplier
 from .product     import Product
 from .transaction import Transaction
+
+__all__ = ["User", "Category", "Supplier", "Product", "Transaction"]

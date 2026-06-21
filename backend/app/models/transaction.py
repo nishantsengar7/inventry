@@ -1,36 +1,25 @@
-"""Transaction ORM model – records every stock movement."""
-import enum
+"""Transaction ORM model – records every stock IN/OUT movement."""
 from datetime import datetime
-from sqlalchemy import (
-    Column, Integer, String, Text, Enum,
-    DateTime, ForeignKey
-)
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
-
-
-class TransactionType(str, enum.Enum):
-    IN  = "IN"   # stock received
-    OUT = "OUT"  # stock dispatched
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id           = Column(Integer, primary_key=True, index=True)
-    type         = Column(Enum(TransactionType), nullable=False)
-    quantity     = Column(Integer, nullable=False)
-    note         = Column(Text, nullable=True)
-    product_id   = Column(Integer, ForeignKey("products.id"),  nullable=False)
-    performed_by = Column(Integer, ForeignKey("users.id"),     nullable=True)
-    created_at   = Column(DateTime, default=datetime.utcnow, index=True)
+    id         = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    type       = Column(String(10), nullable=False)   # "IN" | "OUT"
+    quantity   = Column(Integer, nullable=False)
+    note       = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
-    # Relationships
+    # Relationship
     product = relationship("Product", back_populates="transactions")
-    user    = relationship("User")
 
     def __repr__(self):
         return (
-            f"<Transaction id={self.id} type={self.type.value} "
+            f"<Transaction id={self.id} type={self.type!r} "
             f"qty={self.quantity} product_id={self.product_id}>"
         )
