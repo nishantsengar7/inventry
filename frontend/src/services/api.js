@@ -35,7 +35,28 @@ api.interceptors.response.use(
       localStorage.removeItem('ims_token');
       localStorage.removeItem('ims_user');
       window.location.href = '/login';
+      return Promise.reject(error);
     }
+    
+    const detail = error.response?.data?.detail;
+    
+    if (typeof detail === 'object' && detail?.error) {
+      // Handle stock errors specially
+      if (detail.code === 'ORDER_001' && detail.stock_errors) {
+        const stockMessages = detail.stock_errors
+          .map(e => `${e.product_name}: need ${e.requested}, have ${e.available}`)
+          .join('\n');
+        
+        error.stockErrors = detail.stock_errors;
+        error.userMessage = 'Insufficient stock:\n' + stockMessages;
+      } else {
+        error.userMessage = detail.message;
+        error.errorCode = detail.code;
+      }
+    } else {
+      error.userMessage = 'Something went wrong. Try again.';
+    }
+    
     return Promise.reject(error);
   },
 );
@@ -176,6 +197,60 @@ export const transactionsAPI = {
 
   async create(transactionData) {
     const { data } = await api.post('/transactions', transactionData);
+    return data;
+  },
+};
+
+export const customersAPI = {
+  async getAll(params = {}) {
+    const { data } = await api.get('/customers', { params });
+    return data;
+  },
+
+  async getById(id) {
+    const { data } = await api.get(`/customers/${id}`);
+    return data;
+  },
+
+  async create(customerData) {
+    const { data } = await api.post('/customers', customerData);
+    return data;
+  },
+
+  async update(id, customerData) {
+    const { data } = await api.put(`/customers/${id}`, customerData);
+    return data;
+  },
+
+  async delete(id) {
+    const { data } = await api.delete(`/customers/${id}`);
+    return data;
+  },
+};
+
+export const ordersAPI = {
+  async getAll(params = {}) {
+    const { data } = await api.get('/orders', { params });
+    return data;
+  },
+
+  async getById(id) {
+    const { data } = await api.get(`/orders/${id}`);
+    return data;
+  },
+
+  async create(orderData) {
+    const { data } = await api.post('/orders', orderData);
+    return data;
+  },
+
+  async updateStatus(id, status) {
+    const { data } = await api.patch(`/orders/${id}/status`, { status });
+    return data;
+  },
+
+  async delete(id) {
+    const { data } = await api.delete(`/orders/${id}`);
     return data;
   },
 };

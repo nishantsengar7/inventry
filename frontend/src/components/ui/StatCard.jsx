@@ -1,3 +1,5 @@
+import React from 'react';
+
 const COLOR_MAP = {
   indigo: {
     bg:   'bg-indigo-50',
@@ -29,6 +31,18 @@ const COLOR_MAP = {
 export default function StatCard({ title, value, icon, color = 'indigo', subtitle }) {
   const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
 
+  const renderIcon = () => {
+    if (!icon) return null;
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
+    if (typeof icon === 'function' || (typeof icon === 'object' && icon.$$typeof)) {
+      const IconComponent = icon;
+      return <IconComponent size={20} />;
+    }
+    return icon;
+  };
+
   return (
     <div
       className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6
@@ -36,7 +50,7 @@ export default function StatCard({ title, value, icon, color = 'indigo', subtitl
                   transition-all duration-200 ${c.bg}`}
     >
       <div className={`w-12 h-12 rounded-xl ${c.icon} flex items-center justify-center flex-shrink-0`}>
-        <span className="text-white">{icon}</span>
+        <span className="text-white">{renderIcon()}</span>
       </div>
 
       <div className="min-w-0">

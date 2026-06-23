@@ -17,6 +17,8 @@ from app.models.category    import Category
 from app.models.supplier    import Supplier
 from app.models.product     import Product
 from app.models.transaction import Transaction
+from app.models.customer    import Customer
+from app.models.order       import Order, OrderItem
 from app.utils.auth         import hash_password
 
 USERS = [
@@ -38,6 +40,49 @@ SUPPLIERS = [
     {"name": "FreshFoods",  "email": "bulk@freshfoods.in",     "phone": "+91-98765-43212", "address": "12 APMC Yard, Vashi, Navi Mumbai 400703"},
     {"name": "OfficeWorld", "email": "b2b@officeworld.in",     "phone": "+91-98765-43213", "address": "88 Connaught Place, New Delhi 110001"},
     {"name": "ToolMaster",  "email": "trade@toolmaster.in",    "phone": "+91-98765-43214", "address": "17 Industrial Estate, Peenya, Bengaluru 560058"},
+]
+
+CUSTOMERS_DATA = [
+    {
+        "full_name": "Rahul Sharma",
+        "email": "rahul.sharma@gmail.com",
+        "phone": "+91 98765 43210"
+    },
+    {
+        "full_name": "Priya Patel",
+        "email": "priya.patel@yahoo.com",
+        "phone": "+91 87654 32109"
+    },
+    {
+        "full_name": "Amit Kumar",
+        "email": "amit.kumar@outlook.com",
+        "phone": "+91 76543 21098"
+    },
+    {
+        "full_name": "Sneha Reddy",
+        "email": "sneha.reddy@gmail.com",
+        "phone": "+91 65432 10987"
+    },
+    {
+        "full_name": "Vikram Singh",
+        "email": "vikram.singh@gmail.com",
+        "phone": "+91 54321 09876"
+    },
+    {
+        "full_name": "Ananya Gupta",
+        "email": "ananya.gupta@hotmail.com",
+        "phone": "+91 43210 98765"
+    },
+    {
+        "full_name": "Rohit Verma",
+        "email": "rohit.verma@gmail.com",
+        "phone": "+91 32109 87654"
+    },
+    {
+        "full_name": "Kavya Nair",
+        "email": "kavya.nair@gmail.com",
+        "phone": None
+    }
 ]
 
 PRODUCTS = [
@@ -100,6 +145,21 @@ def seed_database(db: Session) -> None:
     Populate the database with demo data.
     Safe to call multiple times – skips if users table already has rows.
     """
+
+    # Always try to seed customers if table is empty, even if other seed data already exists
+    if db.query(Customer).count() == 0:
+        print("[SEED] Seeding demo customers...")
+        for c in CUSTOMERS_DATA:
+            existing = db.query(Customer).filter(Customer.email == c["email"].lower()).first()
+            if not existing:
+                cust = Customer(
+                    full_name=c["full_name"],
+                    email=c["email"].lower(),
+                    phone=c["phone"]
+                )
+                db.add(cust)
+        db.commit()
+        print(f"[OK] Seeded: {len(CUSTOMERS_DATA)} customers.")
 
     if db.query(User).count() > 0:
         print("[SKIP] Seed skipped - data already exists.")
@@ -214,3 +274,139 @@ def seed_database(db: Session) -> None:
         f"{len(sup_objs)} suppliers, {len(product_objs)} products, "
         f"{txn_count} transactions."
     )
+
+    # Seed demo orders if orders table is empty
+    if db.query(Order).count() == 0:
+        print("[SEED] Seeding demo orders...")
+        DEMO_ORDERS = [
+            {
+                "customer_email": "rahul.sharma@gmail.com",
+                "status": "completed",
+                "items": [
+                    {"sku": "ELEC-002", "qty": 2},
+                    {"sku": "ELEC-001", "qty": 1}
+                ]
+            },
+            {
+                "customer_email": "priya.patel@yahoo.com",
+                "status": "completed",
+                "items": [
+                    {"sku": "CLTH-001", "qty": 3}
+                ]
+            },
+            {
+                "customer_email": "amit.kumar@outlook.com",
+                "status": "pending",
+                "items": [
+                    {"sku": "OFFC-001", "qty": 5},
+                    {"sku": "OFFC-002", "qty": 2}
+                ]
+            },
+            {
+                "customer_email": "sneha.reddy@gmail.com",
+                "status": "pending",
+                "items": [
+                    {"sku": "FOOD-001", "qty": 2},
+                    {"sku": "FOOD-002", "qty": 1}
+                ]
+            },
+            {
+                "customer_email": "vikram.singh@gmail.com",
+                "status": "cancelled",
+                "items": [
+                    {"sku": "ELEC-003", "qty": 1},
+                    {"sku": "ELEC-004", "qty": 1}
+                ]
+            },
+            {
+                "customer_email": "ananya.gupta@hotmail.com",
+                "status": "completed",
+                "items": [
+                    {"sku": "TOOL-002", "qty": 3}
+                ]
+            },
+            {
+                "customer_email": "rohit.verma@gmail.com",
+                "status": "pending",
+                "items": [
+                    {"sku": "CLTH-001", "qty": 2},
+                    {"sku": "CLTH-002", "qty": 1}
+                ]
+            },
+            {
+                "customer_email": "kavya.nair@gmail.com",
+                "status": "completed",
+                "items": [
+                    {"sku": "OFFC-003", "qty": 2}
+                ]
+            },
+            {
+                "customer_email": "rahul.sharma@gmail.com",
+                "status": "pending",
+                "items": [
+                    {"sku": "TOOL-001", "qty": 1}
+                ]
+            },
+            {
+                "customer_email": "priya.patel@yahoo.com",
+                "status": "completed",
+                "items": [
+                    {"sku": "FOOD-003", "qty": 4},
+                    {"sku": "FOOD-001", "qty": 1}
+                ]
+            }
+        ]
+
+        for idx, order_data in enumerate(DEMO_ORDERS, 1):
+            customer = db.query(Customer).filter(Customer.email == order_data["customer_email"].lower()).first()
+            if not customer:
+                continue
+
+            total_amount = 0.0
+            order_items = []
+
+            for item in order_data["items"]:
+                product = db.query(Product).filter(Product.sku == item["sku"]).first()
+                if product:
+                    unit_price = product.price
+                    subtotal = unit_price * item["qty"]
+                    total_amount += subtotal
+                    order_items.append((product, item["qty"], unit_price, subtotal))
+
+            order_date = datetime.utcnow() - timedelta(days=10 - idx, hours=idx * 2)
+            db_order = Order(
+                customer_id=customer.id,
+                status=order_data["status"],
+                total_amount=total_amount,
+                notes=f"Demo order {idx}",
+                created_at=order_date,
+                updated_at=order_date
+            )
+            db.add(db_order)
+            db.flush()
+
+            for product, qty, unit_price, subtotal in order_items:
+                db_item = OrderItem(
+                    order_id=db_order.id,
+                    product_id=product.id,
+                    quantity=qty,
+                    unit_price=unit_price,
+                    subtotal=subtotal
+                )
+                db.add(db_item)
+
+                if order_data["status"] != "cancelled":
+                    product.quantity -= qty
+                    db.add(product)
+
+                    transaction = Transaction(
+                        product_id=product.id,
+                        type="OUT",
+                        quantity=qty,
+                        note=f"Order #{db_order.id}",
+                        created_at=order_date
+                    )
+                    db.add(transaction)
+
+        db.commit()
+        print("[OK] Seeded 10 demo orders and updated stock levels.")

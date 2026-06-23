@@ -9,6 +9,11 @@ class DashboardStats(BaseModel):
     total_inventory_value:  float
     low_stock_count:        int
     total_transactions:     int
+    total_customers:        int
+    total_orders:           int
+    pending_orders:         int
+    completed_orders:       int
+    total_revenue:          float
 
 class AIInsight(BaseModel):
     """Per-product AI-generated restocking insight."""

@@ -24,8 +24,11 @@ from app.database import Base
 
 import app.models
 
-from app.routes import auth, categories, suppliers, products, transactions, dashboard, ai
+from app.routes import auth, categories, suppliers, products, transactions, dashboard, ai, customers
+from app.routes.orders import router as orders_router
 from app.utils.seed import seed_database
+from app.models.customer import Customer
+from app.models.order import Order, OrderItem
 
 logging.basicConfig(
     level=logging.INFO,
@@ -141,6 +144,12 @@ app.include_router(products.router)
 app.include_router(transactions.router)
 app.include_router(dashboard.router)
 app.include_router(ai.router, prefix="/ai", tags=["AI Features"])
+app.include_router(customers.router)
+app.include_router(
+    orders_router,
+    prefix="/orders",
+    tags=["Orders"]
+)
 
 @app.get("/health", tags=["System"], summary="Enhanced health check")
 def health():

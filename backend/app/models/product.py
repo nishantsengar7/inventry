@@ -1,11 +1,17 @@
 """Product ORM model."""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = (
+        CheckConstraint(
+            'quantity >= 0',
+            name='quantity_non_negative'
+        ),
+    )
 
     id          = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name        = Column(String(150), nullable=False, index=True)
@@ -32,6 +38,7 @@ class Product(Base):
         lazy="select",
         cascade="all, delete-orphan",
     )
+    order_items = relationship("OrderItem", back_populates="product")
 
     @property
     def is_low_stock(self) -> bool:

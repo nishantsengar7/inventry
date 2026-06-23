@@ -1,14 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Package, Tag, IndianRupee, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Package, IndianRupee, AlertTriangle, Users, ShoppingCart, Warehouse, Menu } from 'lucide-react';
 import Layout from '../components/layout/Layout';
 import StatCard from '../components/ui/StatCard';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import StockBarChart from '../components/charts/StockBarChart';
 import TransactionLineChart from '../components/charts/TransactionLineChart';
-import { dashboardAPI, productsAPI } from '../services/api';
+import { dashboardAPI, productsAPI, ordersAPI } from '../services/api';
 import { Link } from 'react-router-dom';
-import { formatCurrency, formatDateTime, toArray } from '../utils/helpers';
+import { formatCurrency, formatDateTime, toArray, formatOrderId } from '../utils/helpers';
+import toast from 'react-hot-toast';
 
 function buildLineChartData(transactions) {
   const list = toArray(transactions);
@@ -37,29 +38,41 @@ function buildLineChartData(transactions) {
 }
 
 export default function Dashboard() {
-  const [stats, setStats]               = useState(null);
-  const [recentTxns, setRecentTxns]     = useState([]);
-  const [aiInsights, setAiInsights]     = useState([]);
-  const [allProducts, setAllProducts]   = useState([]);
-  const [allTxns, setAllTxns]           = useState([]);
-  const [isLoading, setIsLoading]       = useState(true);
+  const [stats, setStats] = useState(null);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [recentTxns, setRecentTxns] = useState([]);
+  const [aiInsights, setAiInsights] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      dashboardAPI.getStats(),
-      dashboardAPI.getRecentTransactions(),
-      dashboardAPI.getAIInsights(),
-      productsAPI.getAll(),
-    ])
-      .then(([s, txns, insights, products]) => {
-        setStats(s);
-        setRecentTxns(toArray(txns));
-        setAiInsights(toArray(insights?.insights));
-        setAllProducts(toArray(products));
-        setAllTxns(toArray(txns));
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        const [statsRes, lowStockRes, ordersRes, txnsRes, insightsRes, productsRes] = await Promise.all([
+          dashboardAPI.getStats(),
+          productsAPI.getLowStock(),
+          ordersAPI.getAll({ limit: 5 }),
+          dashboardAPI.getRecentTransactions(),
+          dashboardAPI.getAIInsights(),
+          productsAPI.getAll()
+        ]);
+        
+        setStats(statsRes);
+        setLowStockProducts(toArray(lowStockRes).slice(0, 5));
+        setRecentOrders(toArray(ordersRes?.orders).slice(0, 5));
+        setRecentTxns(toArray(txnsRes));
+        setAiInsights(toArray(insightsRes?.insights).slice(0, 5));
+        setAllProducts(toArray(productsRes));
+      } catch (error) {
+        toast.error("Failed to load dashboard");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
   }, []);
 
   const lineData = useMemo(() => buildLineChartData(recentTxns), [recentTxns]);
@@ -77,43 +90,149 @@ export default function Dashboard() {
     <Layout title="Dashboard" lowStockCount={lowStockCount}>
       <div className="space-y-6">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Row 1 & 2 - 6 cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
             title="Total Products"
             value={stats?.total_products ?? 0}
-            icon={<Package size={22} />}
+            icon={Package}
             color="indigo"
-            subtitle="In catalogue"
+            subtitle={`${stats?.low_stock_count ?? 0} low stock`}
           />
           <StatCard
-            title="Categories"
-            value={stats?.total_categories ?? 0}
-            icon={<Tag size={22} />}
+            title="Total Customers"
+            value={stats?.total_customers ?? 0}
+            icon={Users}
             color="purple"
+            subtitle="Registered customers"
+          />
+          <StatCard
+            title="Total Orders"
+            value={stats?.total_orders ?? 0}
+            icon={ShoppingCart}
+            color="blue"
+            subtitle={`${stats?.pending_orders ?? 0} pending`}
+          />
+          <StatCard
+            title="Total Revenue"
+            value={formatCurrency(stats?.total_revenue ?? 0)}
+            icon={IndianRupee}
+            color="green"
+            subtitle="From completed orders"
           />
           <StatCard
             title="Inventory Value"
             value={formatCurrency(stats?.total_inventory_value ?? 0)}
-            icon={<IndianRupee size={22} />}
-            color="green"
+            icon={Warehouse}
+            color="amber"
             subtitle="Current stock value"
           />
           <StatCard
             title="Low Stock Items"
             value={stats?.low_stock_count ?? 0}
-            icon={<AlertTriangle size={22} />}
+            icon={AlertTriangle}
             color="red"
-            subtitle={lowStockCount > 0 ? 'Needs attention' : 'All good!'}
+            subtitle="Need reordering"
           />
         </div>
 
+        {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <StockBarChart data={allProducts} />
           <TransactionLineChart data={lineData} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Low Stock Products & Recent Orders */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Low Stock Products table */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-1.5">
+                <span>⚠️</span> Low Stock Products
+              </h2>
+              <Link to="/products?low_stock=true" className="text-indigo-600 text-sm hover:underline font-semibold">
+                View all →
+              </Link>
+            </div>
+            
+            {lowStockProducts.length === 0 ? (
+              <p className="text-green-600 text-center py-8 font-medium">
+                ✅ All products are well stocked!
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[340px]">
+                  <thead>
+                    <tr className="text-left text-sm text-gray-500 border-b">
+                      <th className="pb-2">Product</th>
+                      <th className="pb-2">SKU</th>
+                      <th className="pb-2">Stock</th>
+                      <th className="pb-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lowStockProducts.map(product => (
+                      <tr key={product.id} className="border-b last:border-0 hover:bg-gray-50/50">
+                        <td className="py-3 font-medium text-gray-800 text-sm">{product.name}</td>
+                        <td className="py-3 text-gray-500 font-mono text-xs">{product.sku}</td>
+                        <td className="py-3">
+                          <span className={product.quantity === 0 ? "text-red-600 font-bold text-sm" : "text-amber-600 font-bold text-sm"}>
+                            {product.quantity} units
+                          </span>
+                        </td>
+                        <td className="py-3">
+                          <Badge status={product.quantity === 0 ? "critical" : "warning"} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
+          {/* Recent Orders section */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-1.5">
+                <span>🛒</span> Recent Orders
+              </h2>
+              <Link to="/orders" className="text-indigo-600 text-sm hover:underline font-semibold">
+                View all →
+              </Link>
+            </div>
+
+            {recentOrders.length === 0 ? (
+              <p className="text-gray-400 text-center py-8 font-medium">
+                No orders yet.
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {recentOrders.map(order => (
+                  <div key={order.id} className="flex items-center justify-between py-3 hover:bg-gray-50/30 rounded-lg px-2">
+                    <div>
+                      <p className="font-mono text-sm text-gray-800 font-semibold">
+                        {formatOrderId(order.id)}
+                      </p>
+                      <p className="text-gray-500 text-xs mt-0.5 font-medium">
+                        {order.customer_name}
+                      </p>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <p className="font-bold text-sm text-gray-900">
+                        {formatCurrency(order.total_amount)}
+                      </p>
+                      <Badge status={order.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Transactions and AI Stock Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-base font-semibold text-gray-800 mb-4">
               Recent Transactions
@@ -157,7 +276,7 @@ export default function Dashboard() {
               </div>
               <Link
                 to="/ai-insights"
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors font-bold"
               >
                 View Full AI Insights →
               </Link>
@@ -196,7 +315,7 @@ export default function Dashboard() {
                     <div className="text-xs text-gray-500 space-y-0.5">
                       <p>Current stock: <strong>{insight.current_stock} units</strong></p>
                     </div>
-                    <p className="text-xs text-indigo-600 font-medium mt-1.5">
+                    <p className="text-xs text-indigo-600 font-medium mt-1.5 font-bold">
                       {insight.reorder_suggestion || 'Check AI Insights for details'}
                     </p>
                   </div>

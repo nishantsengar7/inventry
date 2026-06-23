@@ -1,7 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Package, Tag, Truck,
-  ArrowLeftRight, LogOut, Box, Sparkles
+  LayoutDashboard, Package, Tag, Truck, Users, User,
+  ArrowLeftRight, LogOut, Box, Sparkles, ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,17 +10,21 @@ const NAV_ITEMS = [
   { to: '/products',     label: 'Products',     Icon: Package          },
   { to: '/categories',   label: 'Categories',   Icon: Tag              },
   { to: '/suppliers',    label: 'Suppliers',    Icon: Truck            },
+  { to: '/customers',    label: 'Customers',    Icon: Users            },
+  { to: '/orders',       label: 'Orders',       Icon: ShoppingCart     },
   { to: '/transactions', label: 'Transactions', Icon: ArrowLeftRight   },
   { to: '/ai-insights',  label: 'AI Insights',  Icon: Sparkles         },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
 
   return (
     <aside
-      className="fixed left-0 top-0 h-full z-40 flex flex-col"
-      style={{ width: '260px', backgroundColor: '#1E1E2E' }}
+      className={`fixed top-0 left-0 h-full w-64 z-50 flex flex-col transition-transform duration-300
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:static lg:z-auto`}
+      style={{ backgroundColor: '#1E1E2E' }}
     >
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
         <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -34,6 +38,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={() => onClose && onClose()}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                transition-all duration-150 group
@@ -59,9 +64,13 @@ export default function Sidebar() {
       <div className="px-3 pb-4 border-t border-white/10 pt-3">
         <div className="flex items-center gap-3 px-3 py-2.5 mb-1">
           <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold uppercase">
-              {user?.name?.[0] ?? 'U'}
-            </span>
+            {user?.name ? (
+              <span className="text-white text-sm font-bold uppercase">
+                {user.name[0]}
+              </span>
+            ) : (
+              <User size={16} className="text-white" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-white text-sm font-medium truncate">{user?.name}</p>

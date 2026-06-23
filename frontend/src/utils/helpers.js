@@ -73,3 +73,35 @@ export function groupBy(arr, key) {
     return acc;
   }, {});
 }
+
+export function formatOrderId(id) {
+  if (id === null || id === undefined) return '#000';
+  return '#' + String(id).padStart(3, '0');
+}
+
+export function getOrderStatusColor(status) {
+  const colors = {
+    pending: 'amber',
+    completed: 'green',
+    cancelled: 'red',
+  };
+  return colors[status?.toLowerCase()] || 'gray';
+}
+
+export function calculateOrderTotal(items) {
+  if (!Array.isArray(items)) return 0.0;
+  return items.reduce((sum, item) => {
+    const qty = Number(item.quantity) || 0;
+    const price = Number(item.price) || 0;
+    return sum + (qty * price);
+  }, 0.0);
+}
+
+export function getStockWarning(available, requested) {
+  const avail = Number(available) || 0;
+  const req = Number(requested) || 0;
+  if (req > avail) {
+    return `Only ${avail} units available`;
+  }
+  return null;
+}

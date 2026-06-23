@@ -6,11 +6,14 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import AppLoader from './components/ui/AppLoader';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
+import Orders from './pages/Orders';
+
 const Login        = lazy(() => import('./pages/Login'));
 const Dashboard    = lazy(() => import('./pages/Dashboard'));
 const Products     = lazy(() => import('./pages/Products'));
 const Categories   = lazy(() => import('./pages/Categories'));
 const Suppliers    = lazy(() => import('./pages/Suppliers'));
+const Customers    = lazy(() => import('./pages/Customers'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const AIInsights   = lazy(() => import('./pages/AIInsights'));
 const NotFound     = lazy(() => import('./pages/NotFound'));
@@ -43,26 +46,28 @@ export default function App() {
       <AuthProvider>
         <Toaster
           position="top-right"
-          gutter={8}
           toastOptions={{
-            duration: 3500,
+            duration: 4000,
             style: {
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '500',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 10px -5px rgba(0,0,0,0.05)',
+              borderRadius: '10px',
+              background: '#333',
+              color: '#fff',
+              fontSize: '14px'
             },
             success: {
-              iconTheme: { primary: '#10B981', secondary: '#fff' },
-              style: { background: '#f0fdf4', color: '#065f46', border: '1px solid #a7f3d0' },
+              duration: 3000,
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#fff'
+              }
             },
             error: {
-              iconTheme: { primary: '#EF4444', secondary: '#fff' },
-              style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' },
-            },
-            loading: {
-              style: { background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' },
-            },
+              duration: 5000,
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#fff'
+              }
+            }
           }}
         />
 
@@ -74,6 +79,8 @@ export default function App() {
             <Route path="/products"     element={<Products />} />
             <Route path="/categories"   element={<Categories />} />
             <Route path="/suppliers"    element={<Suppliers />} />
+            <Route path="/customers"    element={<Customers />} />
+            <Route path="/orders"       element={<Orders />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/ai-insights"  element={<AIInsights />} />
 

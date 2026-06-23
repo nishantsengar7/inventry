@@ -7,13 +7,54 @@ from app.database import get_db
 from app.models.product  import Product
 from app.models.category import Category
 from app.models.supplier import Supplier
+from app.models.order import OrderItem
 from app.schemas.product import (
     ProductCreate, ProductUpdate,
     ProductResponse, ProductWithDetails,
 )
 from app.utils.auth import get_current_user, require_admin
+from app.utils.errors import make_error
 
 router = APIRouter(prefix="/products", tags=["Products"])
+
+def check_sku_unique(
+    sku: str,
+    db: Session,
+    exclude_id: int = None
+):
+    query = db.query(Product).filter(
+        Product.sku == sku.upper().strip()
+    )
+    if exclude_id:
+        query = query.filter(
+            Product.id != exclude_id
+        )
+    existing = query.first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": True,
+                "message": f"SKU '{sku}' is already in use by '{existing.name}'",
+                "code": "PRODUCT_002",
+                "existing_product_id": existing.id
+            }
+        )
+
+def validate_quantity_update(
+    new_quantity: int,
+    product_name: str
+):
+    if new_quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": True,
+                "message": f"Quantity cannot be negative for '{product_name}'",
+                "code": "PRODUCT_003"
+            }
+        )
 
 def _to_details(p: Product) -> ProductWithDetails:
     data = ProductWithDetails.model_validate(p)
@@ -128,11 +169,7 @@ def create_product(
     _admin=Depends(require_admin),
 ):
     """Create a product. SKU must be unique. Requires admin role."""
-    if db.query(Product).filter(Product.sku == payload.sku).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"SKU '{payload.sku}' is already in use",
-        )
+    check_sku_unique(payload.sku, db)
 
     if payload.category_id and not db.query(Category).filter(Category.id == payload.category_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found")
@@ -164,7 +201,7 @@ def update_product(
     _admin=Depends(require_admin),
 ):
     """Update any product fields. Requires admin role."""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
@@ -172,12 +209,11 @@ def update_product(
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
 
-    if "sku" in update_data and update_data["sku"] != product.sku:
-        if db.query(Product).filter(Product.sku == update_data["sku"]).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"SKU '{update_data['sku']}' is already in use",
-            )
+    if "sku" in update_data and update_data["sku"]:
+        check_sku_unique(update_data["sku"], db, exclude_id=product_id)
+
+    if "quantity" in update_data and update_data["quantity"] is not None:
+        validate_quantity_update(update_data["quantity"], product.name)
 
     for field, value in update_data.items():
         setattr(product, field, value)
@@ -203,9 +239,22 @@ def delete_product(
     _admin=Depends(require_admin),
 ):
     """Delete a product and its transaction history. Requires admin role."""
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+    # Block deleting if there are active orders
+    has_orders = db.query(OrderItem).filter(OrderItem.product_id == product_id).first()
+    if has_orders:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": True,
+                "message": "Product has active orders",
+                "code": "PRODUCT_004"
+            }
+        )
+
     try:
         db.delete(product)
         db.commit()

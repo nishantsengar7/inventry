@@ -87,7 +87,7 @@ def create_transaction(
 
     The product's quantity is updated atomically in the same transaction.
     """
-    product = db.query(Product).filter(Product.id == payload.product_id).first()
+    product = db.query(Product).filter(Product.id == payload.product_id).with_for_update().first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

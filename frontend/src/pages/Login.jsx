@@ -32,9 +32,12 @@ export default function Login() {
       await login(email, password);
 
     } catch (err) {
-      const msg = err?.response?.data?.detail ?? '';
+      const data = err?.response?.data;
+      const msg = data?.detail ?? data?.message ?? '';
       const status = err?.response?.status;
-      if (status === 401 || msg.toLowerCase().includes('password') || msg.toLowerCase().includes('credential')) {
+      if (status === 429) {
+        setError(msg || 'Too many requests. Please wait a minute and try again.');
+      } else if (status === 401 || msg.toLowerCase().includes('password') || msg.toLowerCase().includes('credential')) {
         setError('Invalid email or password. Please check your credentials.');
       } else if (status === 404 || msg.toLowerCase().includes('not found')) {
         setError('Account not found. Please check your email address.');

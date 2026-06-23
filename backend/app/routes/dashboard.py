@@ -15,6 +15,8 @@ from app.models.product     import Product
 from app.models.category    import Category
 from app.models.supplier    import Supplier
 from app.models.transaction import Transaction
+from app.models.customer    import Customer
+from app.models.order       import Order
 from app.schemas.dashboard  import DashboardStats, AIInsight, AIInsightsResponse
 from app.schemas.transaction import TransactionResponse
 from app.utils.auth import get_current_user
@@ -39,6 +41,7 @@ def get_stats(
     total_categories = db.query(func.count(Category.id)).scalar() or 0
     total_suppliers  = db.query(func.count(Supplier.id)).scalar() or 0
     total_transactions = db.query(func.count(Transaction.id)).scalar() or 0
+    total_customers  = db.query(func.count(Customer.id)).scalar() or 0
 
     value_result = db.query(
         func.sum(Product.price * Product.quantity)
@@ -52,6 +55,12 @@ def get_stats(
         or 0
     )
 
+    total_orders = db.query(func.count(Order.id)).scalar() or 0
+    pending_orders = db.query(func.count(Order.id)).filter(Order.status == "pending").scalar() or 0
+    completed_orders = db.query(func.count(Order.id)).filter(Order.status == "completed").scalar() or 0
+    revenue_result = db.query(func.sum(Order.total_amount)).filter(Order.status == "completed").scalar()
+    total_revenue = float(revenue_result) if revenue_result else 0.0
+
     return DashboardStats(
         total_products=total_products,
         total_categories=total_categories,
@@ -59,6 +68,11 @@ def get_stats(
         total_inventory_value=round(total_inventory_value, 2),
         low_stock_count=low_stock_count,
         total_transactions=total_transactions,
+        total_customers=total_customers,
+        total_orders=total_orders,
+        pending_orders=pending_orders,
+        completed_orders=completed_orders,
+        total_revenue=round(total_revenue, 2),
     )
 
 @router.get(
