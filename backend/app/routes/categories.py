@@ -10,9 +10,8 @@ from app.utils.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
-
 @router.get(
-    "/",
+    "",
     response_model=List[CategoryResponse],
     summary="List all categories",
 )
@@ -20,9 +19,8 @@ def list_categories(db: Session = Depends(get_db)):
     """Return all categories. No authentication required."""
     return db.query(Category).order_by(Category.name).all()
 
-
 @router.post(
-    "/",
+    "",
     response_model=CategoryResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new category (admin only)",
@@ -52,7 +50,6 @@ def create_category(
         ) from exc
     return cat
 
-
 @router.put(
     "/{cat_id}",
     response_model=CategoryResponse,
@@ -73,7 +70,6 @@ def update_category(
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
 
-    # Check name uniqueness if name is being changed
     if "name" in update_data and update_data["name"] != cat.name:
         conflict = db.query(Category).filter(Category.name == update_data["name"]).first()
         if conflict:
@@ -95,7 +91,6 @@ def update_category(
             detail="Failed to update category",
         ) from exc
     return cat
-
 
 @router.delete(
     "/{cat_id}",

@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-
 class Category(Base):
     __tablename__ = "categories"
 
@@ -13,7 +12,6 @@ class Category(Base):
     description = Column(String(255), nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # One category → many products
     products = relationship(
         "Product",
         back_populates="category",

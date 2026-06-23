@@ -1,95 +1,147 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Package, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import toast from 'react-hot-toast'
+import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, Box, CheckCircle2, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+const FEATURES = [
+  'Real-time stock level monitoring',
+  'AI-powered reorder recommendations',
+  'Complete transaction audit trail',
+];
 
 export default function Login() {
-  const [form, setForm]       = useState({ username: '', password: '' })
-  const [showPw, setShowPw]   = useState(false)
-  const [loading, setLoading] = useState(false)
-  const { login }             = useAuth()
-  const navigate              = useNavigate()
+  const { isAuthenticated, login, isLoading: authLoading } = useAuth();
 
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw]     = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
+
+  if (!authLoading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!form.username || !form.password) {
-      toast.error('Please enter username and password')
-      return
+    e.preventDefault();
+    setError('');
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
-      await login(form.username, form.password)
-      toast.success('Welcome back!')
-      navigate('/dashboard')
+      await login(email, password);
+
     } catch (err) {
-      const msg = err.response?.data?.detail ?? 'Invalid credentials'
-      toast.error(msg)
+      const msg = err?.response?.data?.detail ?? '';
+      const status = err?.response?.status;
+      if (status === 401 || msg.toLowerCase().includes('password') || msg.toLowerCase().includes('credential')) {
+        setError('Invalid email or password. Please check your credentials.');
+      } else if (status === 404 || msg.toLowerCase().includes('not found')) {
+        setError('Account not found. Please check your email address.');
+      } else {
+        setError(msg || 'Sign in failed. Please try again.');
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      {/* Background glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-primary-800/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen flex">
 
-      <div className="relative w-full max-w-md">
-        {/* Card */}
-        <div className="card p-8 space-y-6">
-          {/* Logo */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30">
-              <Package size={28} className="text-white" />
-            </div>
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-slate-100">Inventory Manager</h1>
-              <p className="text-sm text-slate-400 mt-1">Sign in to your account</p>
-            </div>
+      <div
+        className="hidden lg:flex flex-col justify-between w-1/2 p-12"
+        style={{ background: 'linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #7c3aed 100%)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <Box size={20} className="text-white" />
+          </div>
+          <span className="text-white font-bold text-xl">InvenTrack</span>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-4xl font-bold text-white leading-tight mb-3">
+              AI-Powered Inventory Management
+            </h2>
+            <p className="text-indigo-200 text-lg">
+              Take full control of your stock, suppliers, and sales with intelligent insights.
+            </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <ul className="space-y-3">
+            {FEATURES.map((f) => (
+              <li key={f} className="flex items-center gap-3 text-indigo-100">
+                <CheckCircle2 size={18} className="text-green-400 flex-shrink-0" />
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-indigo-300 text-sm">
+          © 2026 InvenTrack · Secure & reliable
+        </p>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center bg-white p-8">
+        <div className="w-full max-w-md">
+
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
+              <Box size={18} className="text-white" />
+            </div>
+            <span className="text-gray-900 font-bold text-lg">InvenTrack</span>
+          </div>
+
+          <h2 className="text-3xl font-bold text-gray-900 mb-1">Welcome back</h2>
+          <p className="text-gray-500 mb-8">Sign in to your account to continue</p>
+
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="username" className="label">Username</label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                placeholder="Enter your username"
-                className="input"
-                value={form.username}
-                onChange={handleChange}
-                disabled={loading}
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email address
+              </label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@demo.com"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                             placeholder-gray-400 text-black transition-all"
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="label">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Password
+              </label>
               <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   id="password"
-                  name="password"
                   type={showPw ? 'text' : 'password'}
                   autoComplete="current-password"
-                  placeholder="Enter your password"
-                  className="input pr-10"
-                  value={form.password}
-                  onChange={handleChange}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                             placeholder-gray-400 text-black transition-all"
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label="Toggle password visibility"
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -97,26 +149,39 @@ export default function Login() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
             <button
-              type="submit"
               id="login-submit"
+              type="submit"
               disabled={loading}
-              className="btn-primary w-full h-10 mt-2"
+              className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl
+                         hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2
+                         disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <><Loader2 size={16} className="animate-spin" /> Signing in…</>
-              ) : (
-                'Sign In'
-              )}
+                <><Loader2 size={18} className="animate-spin" /> Signing in…</>
+              ) : 'Sign In'}
             </button>
           </form>
 
-          {/* Demo hint */}
-          <p className="text-center text-xs text-slate-500">
-            Demo: <span className="text-slate-400 font-mono">admin / admin123</span>
-          </p>
+          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Demo credentials
+            </p>
+            <p className="text-sm text-gray-600">
+              <strong>Admin:</strong> admin@demo.com / admin123
+            </p>
+            <p className="text-sm text-gray-600">
+              <strong>Viewer:</strong> viewer@demo.com / viewer123
+            </p>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

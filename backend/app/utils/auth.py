@@ -15,31 +15,21 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.user import TokenData
 
-# ── Configuration ─────────────────────────────────────────────
 SECRET_KEY  = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 ALGORITHM   = os.environ.get("ALGORITHM",  "HS256")
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("ACCESS_TOKEN_EXPIRE_HOURS", "24"))
 
-# ── Password context (bcrypt) ─────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# ── OAuth2 scheme – tokenUrl points at the login endpoint ─────
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-
-# ── Password helpers ──────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     """Return a bcrypt hash of the plain-text password."""
     return pwd_context.hash(password)
 
-
 def verify_password(plain: str, hashed: str) -> bool:
     """Return True when plain matches the stored bcrypt hash."""
     return pwd_context.verify(plain, hashed)
-
-
-# ── JWT helpers ───────────────────────────────────────────────
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -53,7 +43,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     )
     payload.update({"exp": expire})
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
 
 def verify_token(token: str) -> TokenData:
     """
@@ -75,9 +64,6 @@ def verify_token(token: str) -> TokenData:
     except JWTError:
         raise credentials_exc
 
-
-# ── FastAPI dependency functions ──────────────────────────────
-
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -86,7 +72,7 @@ def get_current_user(
     FastAPI dependency: validate Bearer token, load and return the User.
     Raises 401 if token is invalid, user not found, or user is inactive.
     """
-    from app.models.user import User  # local import avoids circular deps
+    from app.models.user import User
 
     token_data = verify_token(token)
     user = db.query(User).filter(User.email == token_data.email).first()
@@ -103,7 +89,6 @@ def get_current_user(
             detail="Account is inactive",
         )
     return user
-
 
 def require_admin(current_user=Depends(get_current_user)):
     """

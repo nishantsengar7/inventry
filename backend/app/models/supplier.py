@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-
 class Supplier(Base):
     __tablename__ = "suppliers"
 
@@ -15,7 +14,6 @@ class Supplier(Base):
     address    = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # One supplier → many products
     products = relationship(
         "Product",
         back_populates="supplier",

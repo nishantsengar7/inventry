@@ -15,17 +15,11 @@ from app.utils.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
-
-# ── Helper: enrich Product ORM instance with detail names ─────
-
 def _to_details(p: Product) -> ProductWithDetails:
     data = ProductWithDetails.model_validate(p)
     data.category_name = p.category.name if p.category else None
     data.supplier_name = p.supplier.name if p.supplier else None
     return data
-
-
-# ── GET /products/low-stock  (must be before /{id} to avoid clash) ──
 
 @router.get(
     "/low-stock",
@@ -71,11 +65,8 @@ def get_low_stock(
         })
     return result
 
-
-# ── GET /products ─────────────────────────────────────────────
-
 @router.get(
-    "/",
+    "",
     response_model=List[ProductWithDetails],
     summary="List products with optional filters",
 )
@@ -113,9 +104,6 @@ def list_products(
     products = q.order_by(Product.name).offset(skip).limit(limit).all()
     return [_to_details(p) for p in products]
 
-
-# ── GET /products/{id} ────────────────────────────────────────
-
 @router.get(
     "/{product_id}",
     response_model=ProductWithDetails,
@@ -128,11 +116,8 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     return _to_details(p)
 
-
-# ── POST /products ────────────────────────────────────────────
-
 @router.post(
-    "/",
+    "",
     response_model=ProductResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new product (admin only)",
@@ -148,7 +133,7 @@ def create_product(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"SKU '{payload.sku}' is already in use",
         )
-    # Validate FK references
+
     if payload.category_id and not db.query(Category).filter(Category.id == payload.category_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found")
     if payload.supplier_id and not db.query(Supplier).filter(Supplier.id == payload.supplier_id).first():
@@ -166,9 +151,6 @@ def create_product(
             detail="Failed to create product",
         ) from exc
     return product
-
-
-# ── PUT /products/{id} ────────────────────────────────────────
 
 @router.put(
     "/{product_id}",
@@ -190,7 +172,6 @@ def update_product(
     if not update_data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
 
-    # Check SKU uniqueness if sku is being changed
     if "sku" in update_data and update_data["sku"] != product.sku:
         if db.query(Product).filter(Product.sku == update_data["sku"]).first():
             raise HTTPException(
@@ -211,9 +192,6 @@ def update_product(
             detail="Failed to update product",
         ) from exc
     return product
-
-
-# ── DELETE /products/{id} ─────────────────────────────────────
 
 @router.delete(
     "/{product_id}",

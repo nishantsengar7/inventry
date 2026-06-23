@@ -12,7 +12,6 @@ from app.utils.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-
 def _to_response(t: Transaction) -> TransactionResponse:
     """Map ORM Transaction to TransactionResponse (adds product_name)."""
     return TransactionResponse(
@@ -24,7 +23,6 @@ def _to_response(t: Transaction) -> TransactionResponse:
         note=t.note,
         created_at=t.created_at,
     )
-
 
 @router.get(
     "/",
@@ -70,7 +68,6 @@ def list_transactions(
     )
     return [_to_response(t) for t in transactions]
 
-
 @router.post(
     "/",
     response_model=TransactionResponse,
@@ -107,7 +104,7 @@ def create_transaction(
                 ),
             )
         product.quantity -= payload.quantity
-    else:  # IN
+    else:
         product.quantity += payload.quantity
 
     txn = Transaction(

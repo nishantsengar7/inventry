@@ -10,9 +10,8 @@ from app.utils.auth import require_admin
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
-
 @router.get(
-    "/",
+    "",
     response_model=List[SupplierResponse],
     summary="List all suppliers",
 )
@@ -20,9 +19,8 @@ def list_suppliers(db: Session = Depends(get_db)):
     """Return all suppliers. No authentication required."""
     return db.query(Supplier).order_by(Supplier.name).all()
 
-
 @router.post(
-    "/",
+    "",
     response_model=SupplierResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new supplier (admin only)",
@@ -50,7 +48,6 @@ def create_supplier(
             detail="Failed to create supplier",
         ) from exc
     return sup
-
 
 @router.put(
     "/{sup_id}",
@@ -85,7 +82,6 @@ def update_supplier(
             detail="Failed to update supplier",
         ) from exc
     return sup
-
 
 @router.delete(
     "/{sup_id}",

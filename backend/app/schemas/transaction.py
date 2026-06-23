@@ -3,10 +3,9 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, field_validator
 
-
 class TransactionCreate(BaseModel):
     product_id: int
-    type:       str      # "IN" | "OUT"
+    type:       str
     quantity:   int
     note:       Optional[str] = None
 
@@ -25,11 +24,10 @@ class TransactionCreate(BaseModel):
             raise ValueError("quantity must be a positive integer")
         return v
 
-
 class TransactionResponse(BaseModel):
     id:           int
     product_id:   int
-    product_name: Optional[str] = None   # joined from products table
+    product_name: Optional[str] = None
     type:         str
     quantity:     int
     note:         Optional[str]

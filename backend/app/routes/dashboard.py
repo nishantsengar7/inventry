@@ -21,9 +21,6 @@ from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-
-# ── GET /dashboard/stats ──────────────────────────────────────
-
 @router.get(
     "/stats",
     response_model=DashboardStats,
@@ -43,13 +40,11 @@ def get_stats(
     total_suppliers  = db.query(func.count(Supplier.id)).scalar() or 0
     total_transactions = db.query(func.count(Transaction.id)).scalar() or 0
 
-    # Inventory value = SUM(price * quantity) across all products
     value_result = db.query(
         func.sum(Product.price * Product.quantity)
     ).scalar()
     total_inventory_value = float(value_result) if value_result else 0.0
 
-    # Low stock = products where quantity <= threshold
     low_stock_count = (
         db.query(func.count(Product.id))
         .filter(Product.quantity <= Product.threshold)
@@ -65,9 +60,6 @@ def get_stats(
         low_stock_count=low_stock_count,
         total_transactions=total_transactions,
     )
-
-
-# ── GET /dashboard/recent-transactions ───────────────────────
 
 @router.get(
     "/recent-transactions",
@@ -98,9 +90,6 @@ def recent_transactions(
         for t in txns
     ]
 
-
-# ── GET /dashboard/ai-insights ───────────────────────────────
-
 @router.get(
     "/ai-insights",
     response_model=AIInsightsResponse,
@@ -123,7 +112,6 @@ def ai_insights(
     """
     cutoff = datetime.utcnow() - timedelta(days=30)
 
-    # Aggregate OUT quantity per product in the last 30 days
     out_sums = (
         db.query(
             Transaction.product_id,
@@ -150,9 +138,8 @@ def ai_insights(
         if avg_daily > 0:
             days_left = round(current / avg_daily, 1)
         else:
-            days_left = None  # no usage → infinite stock projection
+            days_left = None
 
-        # Determine urgency
         if current == 0:
             urgency = "critical"
         elif days_left is not None and days_left <= 3:
@@ -162,7 +149,6 @@ def ai_insights(
         else:
             urgency = "ok"
 
-        # Build reorder suggestion string
         if current == 0:
             reorder_qty    = max(p.threshold * 3, 50)
             suggestion     = f"Out of stock! Reorder {reorder_qty} units immediately"
@@ -190,7 +176,6 @@ def ai_insights(
             )
         )
 
-    # Sort: critical → warning → ok, then by days_until_stockout ascending
     def sort_key(i: AIInsight):
         order = {"critical": 0, "warning": 1, "ok": 2}
         return (order[i.urgency], i.days_until_stockout or 9999)

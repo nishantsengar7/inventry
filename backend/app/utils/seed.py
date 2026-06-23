@@ -2,7 +2,10 @@
 seed.py – Populate the database with realistic demo data.
 
 Called once on application startup when the users table is empty.
-Creates: 2 users, 5 categories, 5 suppliers, 15 products, 30 transactions.
+Creates: 2 users, 5 categories, 5 suppliers, 15 products, 60 transactions.
+
+Products use Indian Rupee (₹) pricing.
+Transactions span the last 45 days with realistic patterns and anomalies.
 """
 
 import random
@@ -16,75 +19,94 @@ from app.models.product     import Product
 from app.models.transaction import Transaction
 from app.utils.auth         import hash_password
 
-
-# ── Seed data definitions ─────────────────────────────────────
-
 USERS = [
-    {"name": "Admin User",   "email": "admin@demo.com",  "password": "admin123",  "role": "admin"},
-    {"name": "Viewer User",  "email": "viewer@demo.com", "password": "viewer123", "role": "viewer"},
+    {"name": "Admin User",  "email": "admin@demo.com",  "password": "admin123",  "role": "admin"},
+    {"name": "Viewer User", "email": "viewer@demo.com", "password": "viewer123", "role": "viewer"},
 ]
 
 CATEGORIES = [
-    {"name": "Electronics",       "description": "Electronic devices, components, and accessories"},
-    {"name": "Clothing",          "description": "Apparel, footwear, and fashion accessories"},
-    {"name": "Food & Beverages",  "description": "Packaged food, drinks, and consumables"},
-    {"name": "Office Supplies",   "description": "Stationery, printers, and desk accessories"},
-    {"name": "Tools & Hardware",  "description": "Hand tools, power tools, and hardware"},
+    {"name": "Electronics",      "description": "Electronic devices, components, and accessories"},
+    {"name": "Clothing",         "description": "Apparel, footwear, and fashion accessories"},
+    {"name": "Food & Beverages", "description": "Packaged food, drinks, and consumables"},
+    {"name": "Office Supplies",  "description": "Stationery, printers, and desk accessories"},
+    {"name": "Tools & Hardware", "description": "Hand tools, power tools, and hardware"},
 ]
 
 SUPPLIERS = [
-    {"name": "TechCorp",   "email": "orders@techcorp.com",   "phone": "+1-555-0101", "address": "123 Silicon Ave, San Jose, CA"},
-    {"name": "FashionHub", "email": "supply@fashionhub.com", "phone": "+1-555-0202", "address": "456 Style Blvd, New York, NY"},
-    {"name": "FreshFoods", "email": "bulk@freshfoods.com",   "phone": "+1-555-0303", "address": "789 Farm Rd, Fresno, CA"},
-    {"name": "OfficeWorld","email": "b2b@officeworld.com",   "phone": "+1-555-0404", "address": "321 Corporate Dr, Chicago, IL"},
-    {"name": "ToolMaster", "email": "trade@toolmaster.com",  "phone": "+1-555-0505", "address": "654 Workshop Ln, Detroit, MI"},
+    {"name": "TechCorp",    "email": "orders@techcorp.in",     "phone": "+91-98765-43210", "address": "204 Silicon Hub, Whitefield, Bengaluru 560066"},
+    {"name": "FashionHub",  "email": "supply@fashionhub.in",   "phone": "+91-98765-43211", "address": "56 Style Market, Linking Road, Mumbai 400050"},
+    {"name": "FreshFoods",  "email": "bulk@freshfoods.in",     "phone": "+91-98765-43212", "address": "12 APMC Yard, Vashi, Navi Mumbai 400703"},
+    {"name": "OfficeWorld", "email": "b2b@officeworld.in",     "phone": "+91-98765-43213", "address": "88 Connaught Place, New Delhi 110001"},
+    {"name": "ToolMaster",  "email": "trade@toolmaster.in",    "phone": "+91-98765-43214", "address": "17 Industrial Estate, Peenya, Bengaluru 560058"},
 ]
 
-# Each product: (name, sku, description, price, quantity, threshold, cat_idx, sup_idx)
-# cat_idx and sup_idx are 0-based indices into CATEGORIES / SUPPLIERS
 PRODUCTS = [
-    # Electronics (cat 0, sup 0 – TechCorp)
-    ("Wireless Keyboard",    "ELEC-001", "Bluetooth mechanical keyboard, compact layout", 79.99, 45,  10, 0, 0),
-    ("USB-C Hub 7-in-1",    "ELEC-002", "Multi-port USB-C hub with HDMI and SD card",   49.99, 3,   10, 0, 0),  # low stock
-    ("27\" Monitor FHD",    "ELEC-003", "Full HD IPS panel, 75Hz, VESA compatible",     249.99, 18, 5,  0, 0),
-    # Clothing (cat 1, sup 1 – FashionHub)
-    ("Men's Polo Shirt",    "CLTH-001", "100% cotton polo, available S-XXL",             24.99, 0,   15, 1, 1),  # out of stock
-    ("Women's Sneakers",    "CLTH-002", "Lightweight running shoes, multiple colors",    59.99, 32,  20, 1, 1),
-    ("Winter Jacket Unisex","CLTH-003", "Waterproof puffer jacket, -10°C rated",         89.99, 7,   10, 1, 1),  # low stock
-    # Food & Beverages (cat 2, sup 2 – FreshFoods)
-    ("Organic Green Tea",   "FOOD-001", "Premium loose-leaf green tea, 250g tin",         12.99, 120, 30, 2, 2),
-    ("Protein Bar 12-Pack", "FOOD-002", "Whey protein bars, mixed flavours",             18.99, 4,   20, 2, 2),  # low stock
-    ("Sparkling Water 24pk","FOOD-003", "Natural mineral sparkling water, 330ml cans",    14.99, 200, 50, 2, 2),
-    # Office Supplies (cat 3, sup 3 – OfficeWorld)
-    ("A4 Paper 500 sheets", "OFFC-001", "80gsm white multipurpose printing paper",        8.99, 350, 100, 3, 3),
-    ("Gel Pen 10-Pack",     "OFFC-002", "0.5mm black gel pens, smooth writing",           5.49, 9,   20, 3, 3),  # low stock
-    ("Stapler Heavy Duty",  "OFFC-003", "40-sheet capacity metal stapler with staples",  14.99, 25,  10, 3, 3),
-    # Tools & Hardware (cat 4, sup 4 – ToolMaster)
-    ("Cordless Drill 18V",  "TOOL-001", "Brushless motor, 2 batteries included",         119.99, 14, 5,  4, 4),
-    ("Tape Measure 5m",     "TOOL-002", "Auto-lock steel tape, magnetic tip",              9.99, 2,   10, 4, 4),  # critical
-    ("Safety Gloves L",     "TOOL-003", "Cut-resistant level 5 work gloves, pair",        12.49, 40,  15, 4, 4),
+
+    ("iPhone 15 Case",       "ELEC-001", "Shock-proof TPU case for iPhone 15, pack of 1",      299,   45,  10, 0, 0),
+    ("USB-C Cable 2m",       "ELEC-002", "Braided USB-C to USB-C cable, 100W fast charge",     199,   8,   15, 0, 0),
+    ("Wireless Mouse",       "ELEC-003", "2.4GHz ergonomic wireless mouse, DPI adjustable",    899,   0,    5, 0, 0),
+    ("Laptop Stand",         "ELEC-004", "Foldable aluminium laptop stand, adjustable height", 1299,  22,   8, 0, 0),
+
+    ("Cotton T-Shirt M",     "CLTH-001", "100% cotton round-neck T-shirt, Medium, white",      499,   67,  20, 1, 1),
+    ("Formal Trousers",      "CLTH-002", "Slim-fit formal trousers, 32W, grey",               1299,   4,   10, 1, 1),
+    ("Winter Jacket",        "CLTH-003", "Waterproof hooded jacket, unisex, navy",            2999,   15,   5, 1, 1),
+
+    ("Green Tea 100pcs",     "FOOD-001", "Premium green tea bags, 100 count box",              299,   33,  10, 2, 2),
+    ("Protein Bar Pack",     "FOOD-002", "Whey protein bars, assorted flavours, 6-pack",       599,   2,   15, 2, 2),
+    ("Mineral Water 24pk",   "FOOD-003", "Natural mineral water 500ml, 24-bottle pack",        399,   55,  20, 2, 2),
+
+    ("A4 Paper Ream",        "OFFC-001", "80gsm white A4 printing paper, 500 sheets",          299,   18,  25, 3, 3),
+    ("Blue Ballpen 12pk",    "OFFC-002", "0.7mm smooth-write blue ballpoint pens, 12-pack",     99,   44,  10, 3, 3),
+    ("Stapler Heavy Duty",   "OFFC-003", "40-sheet capacity metal stapler with staples box",   399,   9,    5, 3, 3),
+
+    ("Cordless Drill",       "TOOL-001", "18V brushless cordless drill, 2 batteries + case",  3999,   7,    3, 4, 4),
+    ("Measuring Tape 5m",    "TOOL-002", "Auto-lock steel tape measure, magnetic tip, 5m",     199,   28,  10, 4, 4),
 ]
 
+OUT_QTY_RANGES = {
+    0: (1, 5),
+    1: (1, 8),
+    2: (5, 20),
+    3: (2, 10),
+    4: (1, 3),
+}
 
-def _random_date(days_back: int) -> datetime:
-    """Return a random datetime within the last `days_back` days."""
-    offset_seconds = random.randint(0, days_back * 24 * 3600)
-    return datetime.utcnow() - timedelta(seconds=offset_seconds)
+IN_NOTES  = [
+    "Monthly restock from supplier",
+    "Emergency order — stock running low",
+    "Bulk purchase — quarterly order",
+    "Supplier delivery received",
+    "Scheduled replenishment",
+    "Return from customer — restocked",
+    "Transfer from warehouse B",
+]
+OUT_NOTES = [
+    "Customer order #",
+    "Sales order #",
+    "B2B dispatch #",
+    "Retail sale #",
+    "Online order #",
+    "Corporate purchase #",
+]
 
+def _random_date(days_back: int, min_days_back: int = 0) -> datetime:
+    """Return a random datetime within the given day range."""
+    range_seconds = (days_back - min_days_back) * 24 * 3600
+    offset = random.randint(0, range_seconds) + min_days_back * 3600
+    return datetime.utcnow() - timedelta(seconds=offset)
 
 def seed_database(db: Session) -> None:
     """
     Populate the database with demo data.
     Safe to call multiple times – skips if users table already has rows.
     """
-    # Guard: only seed once
+
     if db.query(User).count() > 0:
-        print("⏭️  Seed skipped – data already exists.")
+        print("[SKIP] Seed skipped - data already exists.")
         return
 
-    print("🌱 Seeding demo data…")
+    print("[SEED] Seeding demo data...")
 
-    # ── Users ────────────────────────────────────────────────
     user_objs = []
     for u in USERS:
         user = User(
@@ -97,7 +119,6 @@ def seed_database(db: Session) -> None:
         user_objs.append(user)
     db.flush()
 
-    # ── Categories ───────────────────────────────────────────
     cat_objs = []
     for c in CATEGORIES:
         cat = Category(name=c["name"], description=c["description"])
@@ -105,7 +126,6 @@ def seed_database(db: Session) -> None:
         cat_objs.append(cat)
     db.flush()
 
-    # ── Suppliers ────────────────────────────────────────────
     sup_objs = []
     for s in SUPPLIERS:
         sup = Supplier(
@@ -118,14 +138,13 @@ def seed_database(db: Session) -> None:
         sup_objs.append(sup)
     db.flush()
 
-    # ── Products ─────────────────────────────────────────────
     product_objs = []
     for (name, sku, desc, price, qty, threshold, cat_i, sup_i) in PRODUCTS:
         prod = Product(
             name=name,
             sku=sku,
             description=desc,
-            price=price,
+            price=float(price),
             quantity=qty,
             threshold=threshold,
             category_id=cat_objs[cat_i].id,
@@ -135,43 +154,63 @@ def seed_database(db: Session) -> None:
         product_objs.append(prod)
     db.flush()
 
-    # ── Transactions (30 realistic entries over last 30 days) ─
-    notes_in  = ["Monthly restock", "Emergency order", "Bulk purchase", "Supplier delivery", "Scheduled replenishment"]
-    notes_out = ["Customer order #", "Internal use", "Sales order", "Damage write-off", "Sample dispatch"]
-
     txn_count = 0
-    while txn_count < 30:
-        for prod in product_objs:
-            if txn_count >= 30:
+    txns = []
+
+    for round_num in range(4):
+        for prod_idx, prod in enumerate(product_objs):
+            if txn_count >= 60:
                 break
 
-            # Alternate IN / OUT to keep things realistic
-            txn_type = "IN" if txn_count % 2 == 0 else "OUT"
-            max_qty  = min(20, prod.quantity) if txn_type == "OUT" else 30
-            qty      = random.randint(1, max(1, max_qty))
+            cat_i = PRODUCTS[prod_idx][6]
+            out_min, out_max = OUT_QTY_RANGES[cat_i]
 
-            if txn_type == "OUT" and qty > prod.quantity:
-                txn_type = "IN"   # flip to IN if not enough stock
+            if round_num == 0:
+                txn_type = "IN"
+            elif prod_idx % 3 == 0:
+                txn_type = "IN"
+            else:
+                txn_type = "OUT"
 
-            note = (
-                random.choice(notes_in)
-                if txn_type == "IN"
-                else random.choice(notes_out) + str(random.randint(1000, 9999))
-            )
+            if prod_idx == 8 and round_num == 2:
+                txn_type = "OUT"
+                qty = 30
+            elif prod_idx == 0 and round_num == 2:
+                txn_type = "IN"
+                qty = 100
+            elif txn_type == "OUT":
+                qty = random.randint(out_min, out_max)
 
-            txn = Transaction(
+                max_possible = PRODUCTS[prod_idx][4]
+                qty = min(qty, max(1, max_possible - 1))
+            else:
+                qty = random.randint(5, 50)
+
+            if txn_type == "OUT":
+                note = random.choice(OUT_NOTES) + str(random.randint(10000, 99999))
+            else:
+                note = random.choice(IN_NOTES)
+
+            days_range_start = 45 - round_num * 10
+            days_range_end   = max(1, days_range_start - 12)
+            txn_date = _random_date(days_range_start, days_range_end)
+
+            txns.append(Transaction(
                 product_id=prod.id,
                 type=txn_type,
                 quantity=qty,
                 note=note,
-                created_at=_random_date(30),
-            )
-            db.add(txn)
+                created_at=txn_date,
+            ))
             txn_count += 1
+
+    txns.sort(key=lambda t: t.created_at)
+    for t in txns:
+        db.add(t)
 
     db.commit()
     print(
-        f"✅  Seeded: {len(user_objs)} users, {len(cat_objs)} categories, "
+        f"[OK] Seeded: {len(user_objs)} users, {len(cat_objs)} categories, "
         f"{len(sup_objs)} suppliers, {len(product_objs)} products, "
         f"{txn_count} transactions."
     )

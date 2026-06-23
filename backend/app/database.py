@@ -11,42 +11,36 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-# Load .env file if present (useful for local development without Docker)
 load_dotenv()
 
-# ── Database URL ──────────────────────────────────────────────
-# Read from environment variable; fail loudly if missing so the issue is
-# obvious rather than silently using a default.
 DATABASE_URL: str = os.environ.get(
     "DATABASE_URL",
-    "postgresql://admin:admin123@localhost:5432/inventory_db",  # local fallback
+    "sqlite:///./inventory.db",
 )
 
-# ── Engine ────────────────────────────────────────────────────
-# pool_pre_ping=True ensures stale connections are recycled automatically.
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
 
-# ── Session Factory ───────────────────────────────────────────
-# autocommit=False  → we commit explicitly (good practice)
-# autoflush=False   → we flush explicitly to avoid surprise queries
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
 )
 
-# ── Base ──────────────────────────────────────────────────────
-# All ORM models should inherit from this Base so that
-# Base.metadata.create_all(engine) creates their tables.
 Base = declarative_base()
 
-
-# ── Dependency ────────────────────────────────────────────────
 def get_db():
     """
     FastAPI dependency that yields a database session per request and
@@ -63,8 +57,6 @@ def get_db():
     finally:
         db.close()
 
-
-# ── Health helper ─────────────────────────────────────────────
 def check_db_connection() -> bool:
     """Return True if the database is reachable, False otherwise."""
     try:

@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Global Reset & Base Styles ─────────────────────────────── */
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -18,7 +17,6 @@
     @apply bg-slate-950 text-slate-100 min-h-screen;
   }
 
-  /* Custom scrollbar for webkit browsers */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -28,10 +26,8 @@
   ::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
 }
 
-/* ── Reusable Component Styles ───────────────────────────────── */
 @layer components {
 
-  /* Card */
   .card {
     @apply bg-slate-900 border border-slate-800 rounded-xl shadow-card;
   }
@@ -39,7 +35,6 @@
     @apply card transition-shadow duration-200 hover:shadow-card-hover;
   }
 
-  /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2
            rounded-lg font-medium text-sm transition-all duration-150
@@ -63,18 +58,16 @@
            hover:bg-slate-800 focus:ring-slate-500;
   }
 
-  /* Form inputs */
   .input {
-    @apply w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg
-           text-slate-100 placeholder-slate-500 text-sm
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+    @apply w-full px-3 py-2 bg-white border border-gray-200 rounded-lg
+           text-black placeholder-gray-400 text-sm
+           focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
            transition-all duration-150;
   }
   .label {
     @apply block text-sm font-medium text-slate-300 mb-1;
   }
 
-  /* Badge */
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
@@ -84,7 +77,6 @@
   .badge-blue   { @apply badge bg-primary-100 text-primary-700; }
   .badge-gray   { @apply badge bg-slate-200   text-slate-700;   }
 
-  /* Table */
   .table-container {
     @apply w-full overflow-x-auto;
   }
@@ -104,7 +96,6 @@
     @apply hover:bg-slate-800/40 transition-colors duration-100;
   }
 
-  /* Sidebar nav link */
   .nav-link {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
            text-slate-400 hover:text-slate-100 hover:bg-slate-800
@@ -114,12 +105,10 @@
     @apply text-primary-400 bg-primary-900/30 hover:bg-primary-900/40;
   }
 
-  /* Stat card */
   .stat-card {
     @apply card p-6 flex flex-col gap-2;
   }
 
-  /* Page header */
   .page-header {
     @apply flex items-center justify-between mb-6;
   }
@@ -129,4 +118,34 @@
   .page-subtitle {
     @apply text-sm text-slate-400 mt-0.5;
   }
+}
+
+input,
+textarea,
+select {
+  color: #000000 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
 }

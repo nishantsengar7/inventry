@@ -3,22 +3,15 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
-
-# ── Request schemas ───────────────────────────────────────────
-
 class UserCreate(BaseModel):
     name:     str
     email:    EmailStr
     password: str
-    role:     str = "viewer"   # "admin" | "viewer"
-
+    role:     str = "viewer"
 
 class UserLogin(BaseModel):
     email:    EmailStr
     password: str
-
-
-# ── Response schemas ──────────────────────────────────────────
 
 class UserResponse(BaseModel):
     id:         int
@@ -30,13 +23,9 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
-# ── Token schemas ─────────────────────────────────────────────
-
 class Token(BaseModel):
     access_token: str
     token_type:   str = "bearer"
-
 
 class TokenData(BaseModel):
     email: Optional[str] = None

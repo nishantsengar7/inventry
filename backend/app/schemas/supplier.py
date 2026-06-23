@@ -3,20 +3,17 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
-
 class SupplierCreate(BaseModel):
     name:    str
     email:   Optional[EmailStr] = None
     phone:   Optional[str]      = None
     address: Optional[str]      = None
 
-
 class SupplierUpdate(BaseModel):
     name:    Optional[str]      = None
     email:   Optional[EmailStr] = None
     phone:   Optional[str]      = None
     address: Optional[str]      = None
-
 
 class SupplierResponse(BaseModel):
     id:         int

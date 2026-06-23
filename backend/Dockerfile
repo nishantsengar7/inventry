@@ -1,30 +1,43 @@
-# ── Base image ────────────────────────────────────────────────
-FROM python:3.11-slim
+# ── Stage 1: Builder ──────────────────────────────────────────
+FROM python:3.11-slim AS builder
 
-# Set working directory inside container
 WORKDIR /app
 
-# Prevent Python from writing .pyc files and enable unbuffered logs
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-# Install OS-level dependencies for psycopg2
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies first (cache layer)
+# Install Python packages into /root/.local (user install)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy the rest of the application source code
+# ── Stage 2: Production ────────────────────────────────────────
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Only runtime dependencies needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed packages from builder stage
+COPY --from=builder /root/.local /root/.local
+
+# Copy application source
 COPY . .
 
-# Expose the API port
+# Environment
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Expose API port
 EXPOSE 8000
 
-# Run the FastAPI app with uvicorn
-# --host 0.0.0.0 ensures Docker can forward the port
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run with uvicorn (no --reload in production image, but docker-compose mounts live code)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

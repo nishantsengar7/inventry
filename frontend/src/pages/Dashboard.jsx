@@ -1,171 +1,211 @@
-import { useEffect, useState } from 'react'
-import {
-  Package, Tag, Truck, ArrowLeftRight,
-  TrendingUp, TrendingDown, AlertTriangle, DollarSign
-} from 'lucide-react'
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar, Legend
-} from 'recharts'
-import api from '../services/api'
+import { useEffect, useState, useMemo } from 'react';
+import { Package, Tag, IndianRupee, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import Layout from '../components/layout/Layout';
+import StatCard from '../components/ui/StatCard';
+import Badge from '../components/ui/Badge';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import StockBarChart from '../components/charts/StockBarChart';
+import TransactionLineChart from '../components/charts/TransactionLineChart';
+import { dashboardAPI, productsAPI } from '../services/api';
+import { Link } from 'react-router-dom';
+import { formatCurrency, formatDateTime, toArray } from '../utils/helpers';
 
-// ── Mock data (replace with real API calls) ───────────────────
-const MOCK_STATS = [
-  { label: 'Total Products',   value: '1,284', delta: '+12',  Icon: Package,       color: 'text-primary-400',  bg: 'bg-primary-900/30'  },
-  { label: 'Categories',       value: '42',    delta: '+3',   Icon: Tag,           color: 'text-success-500',  bg: 'bg-success-900/30'  },
-  { label: 'Suppliers',        value: '138',   delta: '-2',   Icon: Truck,         color: 'text-warning-500',  bg: 'bg-warning-900/30'  },
-  { label: 'Transactions',     value: '3,920', delta: '+240', Icon: ArrowLeftRight, color: 'text-danger-400',  bg: 'bg-danger-900/30'   },
-]
+function buildLineChartData(transactions) {
+  const list = toArray(transactions);
+  const map = {};
+  const now = new Date();
 
-const MOCK_AREA = [
-  { month: 'Jan', stock_in: 400, stock_out: 240 },
-  { month: 'Feb', stock_in: 300, stock_out: 139 },
-  { month: 'Mar', stock_in: 600, stock_out: 380 },
-  { month: 'Apr', stock_in: 800, stock_out: 430 },
-  { month: 'May', stock_in: 500, stock_out: 380 },
-  { month: 'Jun', stock_in: 900, stock_out: 430 },
-]
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    map[key] = { date: key, in: 0, out: 0 };
+  }
 
-const MOCK_BAR = [
-  { category: 'Electronics', count: 320 },
-  { category: 'Clothing',    count: 210 },
-  { category: 'Food',        count: 180 },
-  { category: 'Furniture',   count: 140 },
-  { category: 'Tools',       count: 90  },
-]
+  list.forEach((t) => {
+    const key = new Date(t.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+    if (map[key]) {
+      if (t.type === 'IN')  map[key].in  += t.quantity;
+      if (t.type === 'OUT') map[key].out += t.quantity;
+    }
+  });
 
-const MOCK_LOW_STOCK = [
-  { id: 1, name: 'Wireless Mouse',   qty: 3,  threshold: 10 },
-  { id: 2, name: 'USB-C Cables',     qty: 5,  threshold: 20 },
-  { id: 3, name: 'Notebook A4',      qty: 8,  threshold: 50 },
-  { id: 4, name: 'HDMI Adapter',     qty: 2,  threshold: 15 },
-]
-
-// ── Tooltip styles for recharts ───────────────────────────────
-const chartTooltipStyle = {
-  backgroundColor: '#0f172a',
-  border: '1px solid #1e293b',
-  borderRadius: '8px',
-  color: '#e2e8f0',
-  fontSize: '12px',
+  return Object.values(map);
 }
 
 export default function Dashboard() {
-  const [stats] = useState(MOCK_STATS)
+  const [stats, setStats]               = useState(null);
+  const [recentTxns, setRecentTxns]     = useState([]);
+  const [aiInsights, setAiInsights]     = useState([]);
+  const [allProducts, setAllProducts]   = useState([]);
+  const [allTxns, setAllTxns]           = useState([]);
+  const [isLoading, setIsLoading]       = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      dashboardAPI.getStats(),
+      dashboardAPI.getRecentTransactions(),
+      dashboardAPI.getAIInsights(),
+      productsAPI.getAll(),
+    ])
+      .then(([s, txns, insights, products]) => {
+        setStats(s);
+        setRecentTxns(toArray(txns));
+        setAiInsights(toArray(insights?.insights));
+        setAllProducts(toArray(products));
+        setAllTxns(toArray(txns));
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const lineData = useMemo(() => buildLineChartData(recentTxns), [recentTxns]);
+  const lowStockCount = stats?.low_stock_count ?? 0;
+
+  if (isLoading) {
+    return (
+      <Layout title="Dashboard">
+        <LoadingSpinner />
+      </Layout>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Welcome back — here's what's happening today.</p>
-        </div>
-      </div>
+    <Layout title="Dashboard" lowStockCount={lowStockCount}>
+      <div className="space-y-6">
 
-      {/* ── Stat cards ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {stats.map(({ label, value, delta, Icon, color, bg }) => (
-          <div key={label} className="stat-card group hover:border-slate-700 transition-colors">
-            <div className="flex items-start justify-between">
-              <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center`}>
-                <Icon size={20} className={color} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Products"
+            value={stats?.total_products ?? 0}
+            icon={<Package size={22} />}
+            color="indigo"
+            subtitle="In catalogue"
+          />
+          <StatCard
+            title="Categories"
+            value={stats?.total_categories ?? 0}
+            icon={<Tag size={22} />}
+            color="purple"
+          />
+          <StatCard
+            title="Inventory Value"
+            value={formatCurrency(stats?.total_inventory_value ?? 0)}
+            icon={<IndianRupee size={22} />}
+            color="green"
+            subtitle="Current stock value"
+          />
+          <StatCard
+            title="Low Stock Items"
+            value={stats?.low_stock_count ?? 0}
+            icon={<AlertTriangle size={22} />}
+            color="red"
+            subtitle={lowStockCount > 0 ? 'Needs attention' : 'All good!'}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <StockBarChart data={allProducts} />
+          <TransactionLineChart data={lineData} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-base font-semibold text-gray-800 mb-4">
+              Recent Transactions
+            </h3>
+            {recentTxns.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-8">No transactions yet</p>
+            ) : (
+              <div className="space-y-2">
+                {recentTxns.slice(0, 10).map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {t.product_name}
+                      </p>
+                      <p className="text-xs text-gray-400">{formatDateTime(t.created_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <Badge status={t.type} />
+                      <span
+                        className={`text-sm font-bold ${
+                          t.type === 'IN' ? 'text-green-600' : 'text-red-500'
+                        }`}
+                      >
+                        {t.type === 'IN' ? '+' : '-'}{t.quantity}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <span className={`text-xs font-medium flex items-center gap-0.5 ${
-                delta.startsWith('+') ? 'text-success-500' : 'text-danger-400'
-              }`}>
-                {delta.startsWith('+') ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {delta}
-              </span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-100">{value}</p>
-              <p className="text-sm text-slate-400">{label}</p>
-            </div>
+            )}
           </div>
-        ))}
-      </div>
 
-      {/* ── Charts row ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Area chart – stock movement */}
-        <div className="card p-5 lg:col-span-2">
-          <h2 className="text-base font-semibold text-slate-200 mb-4">Stock Movement (6 months)</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MOCK_AREA} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}   />
-                </linearGradient>
-                <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0}   />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={chartTooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
-              <Area type="monotone" dataKey="stock_in"  stroke="#3b82f6" fill="url(#gradIn)"  strokeWidth={2} name="Stock In"  />
-              <Area type="monotone" dataKey="stock_out" stroke="#ef4444" fill="url(#gradOut)" strokeWidth={2} name="Stock Out" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Bar chart – products per category */}
-        <div className="card p-5">
-          <h2 className="text-base font-semibold text-slate-200 mb-4">Products by Category</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={MOCK_BAR} layout="vertical" margin={{ left: 0, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-              <XAxis type="number" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="category" type="category" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} width={70} />
-              <Tooltip contentStyle={chartTooltipStyle} />
-              <Bar dataKey="count" fill="#2563eb" radius={[0, 4, 4, 0]} name="Products" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* ── Low Stock Alerts ────────────────────────────────── */}
-      <div className="card">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-800">
-          <AlertTriangle size={16} className="text-warning-500" />
-          <h2 className="text-base font-semibold text-slate-200">Low Stock Alerts</h2>
-          <span className="badge badge-yellow ml-auto">{MOCK_LOW_STOCK.length} items</span>
-        </div>
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Product</th>
-                <th>Current Qty</th>
-                <th>Min Threshold</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_LOW_STOCK.map((item, i) => (
-                <tr key={item.id}>
-                  <td className="text-slate-500">{i + 1}</td>
-                  <td className="font-medium text-slate-200">{item.name}</td>
-                  <td className="text-danger-400 font-semibold">{item.qty}</td>
-                  <td className="text-slate-400">{item.threshold}</td>
-                  <td>
-                    <span className={`badge ${item.qty <= 3 ? 'badge-red' : 'badge-yellow'}`}>
-                      {item.qty <= 3 ? 'Critical' : 'Low'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="mb-4 flex justify-between items-start">
+              <div>
+                <h3 className="text-base font-semibold text-gray-800">🤖 AI Stock Insights</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Smart reorder recommendations</p>
+              </div>
+              <Link
+                to="/ai-insights"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                View Full AI Insights →
+              </Link>
+            </div>
+            {aiInsights.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <p className="text-gray-400 text-sm text-center mb-4">
+                  No insights available yet
+                </p>
+                <Link
+                  to="/ai-insights"
+                  className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors"
+                >
+                  Explore AI Features
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {aiInsights.slice(0, 3).map((insight) => (
+                  <div
+                    key={insight.product_id}
+                    className={`rounded-xl p-3 border ${
+                      insight.urgency === 'critical'
+                        ? 'bg-red-50 border-red-200'
+                        : insight.urgency === 'warning'
+                        ? 'bg-amber-50 border-amber-200'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {insight.product_name}
+                      </p>
+                      <Badge status={insight.urgency} />
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      <p>Current stock: <strong>{insight.current_stock} units</strong></p>
+                    </div>
+                    <p className="text-xs text-indigo-600 font-medium mt-1.5">
+                      {insight.reorder_suggestion || 'Check AI Insights for details'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    </Layout>
+  );
 }

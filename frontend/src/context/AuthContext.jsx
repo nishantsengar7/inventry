@@ -1,52 +1,72 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-import api from '../services/api'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../services/api';
+import toast from 'react-hot-toast';
 
-// ── Auth Context ──────────────────────────────────────────────
-const AuthContext = createContext(null)
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // Try to restore user from localStorage on first load
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('ims_user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
+  const [user, setUser]           = useState(null);
+  const [token, setToken]         = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate                  = useNavigate();
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('ims_token');
+    if (!storedToken) {
+      setIsLoading(false);
+      return;
     }
-  })
 
-  // ── Login ────────────────────────────────────────────────
-  const login = useCallback(async (username, password) => {
-    // FastAPI OAuth2 expects form data (application/x-www-form-urlencoded)
-    const form = new URLSearchParams()
-    form.append('username', username)
-    form.append('password', password)
+    authAPI
+      .getMe()
+      .then((userData) => {
+        setUser(userData);
+        setToken(storedToken);
+      })
+      .catch(() => {
 
-    const { data } = await api.post('/auth/token', form, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    })
+        authAPI.logout();
+        setUser(null);
+        setToken(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
-    // Store JWT token and user info
-    const userData = { username, token: data.access_token }
-    localStorage.setItem('ims_user', JSON.stringify(userData))
-    api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
-    setUser(userData)
-    return userData
-  }, [])
+  const login = useCallback(
+    async (email, password) => {
+      const data = await authAPI.login(email, password);
+      const userData = await authAPI.getMe();
+      setToken(data.access_token);
+      setUser(userData);
+      toast.success(`Welcome back, ${userData.name}! 👋`);
+      navigate('/dashboard');
+    },
+    [navigate],
+  );
 
-  // ── Logout ───────────────────────────────────────────────
   const logout = useCallback(() => {
-    localStorage.removeItem('ims_user')
-    delete api.defaults.headers.common['Authorization']
-    setUser(null)
-  }, [])
+    authAPI.logout();
+    setUser(null);
+    setToken(null);
+    toast.success('Logged out successfully');
+    navigate('/login');
+  }, [navigate]);
+
+  const isAdmin = () => user?.role === 'admin';
+  const isAuthenticated = !!user && !!token;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, token, isLoading, isAuthenticated, login, logout, isAdmin }}
+    >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
-// Convenience hook
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
+  return ctx;
+}

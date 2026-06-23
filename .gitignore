@@ -1,40 +1,98 @@
-# ── Python ────────────────────────────────────────────────────
+# ============================================================
+# .gitignore — Root level
+# ============================================================
+
+# ── Environment / Secrets ────────────────────────────────────
+.env
+*.env.local
+.env.*.local
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-*.pyo
-*.egg-info/
-dist/
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-.venv/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 venv/
+.venv/
 env/
-*.env
-.env.local
-.env.production
+.env_dir/
+ENV/
+*.pyo
+*.pyd
+.Python
 
-# Alembic
-alembic/versions/*.pyc
-
-# ── Node / Frontend ───────────────────────────────────────────
+# ── Node / Frontend ──────────────────────────────────────────
 node_modules/
 frontend/dist/
-frontend/.vite/
-*.log
+frontend/.npm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
 
-# ── Docker ────────────────────────────────────────────────────
-# (docker-compose.override.yml is intentionally not ignored)
+# ── Database ─────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+*.sql.backup
 
-# ── IDE & OS ──────────────────────────────────────────────────
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editors ────────────────────────────────────────────
 .vscode/
 .idea/
-*.DS_Store
-Thumbs.db
+*.swp
+*.swo
+*.swn
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# ── Secrets ───────────────────────────────────────────────────
-*.pem
-*.key
-secrets/
+# ── Docker ───────────────────────────────────────────────────
+.docker/
+docker-compose.override.yml
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+backend_logs.txt

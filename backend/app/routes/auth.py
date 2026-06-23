@@ -9,7 +9,6 @@ from app.utils.auth import hash_password, verify_password, create_access_token, 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-
 @router.post(
     "/register",
     response_model=UserResponse,
@@ -53,7 +52,6 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
     return user
 
-
 @router.post(
     "/login",
     response_model=Token,
@@ -86,7 +84,6 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": user.email, "role": user.role})
     return Token(access_token=token)
-
 
 @router.get(
     "/me",

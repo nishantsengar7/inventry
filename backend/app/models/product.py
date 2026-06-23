@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-
 class Product(Base):
     __tablename__ = "products"
 
@@ -14,7 +13,7 @@ class Product(Base):
     description = Column(String(500), nullable=True)
     price       = Column(Float, nullable=False)
     quantity    = Column(Integer, default=0, nullable=False)
-    threshold   = Column(Integer, default=10, nullable=False)  # low-stock alert level
+    threshold   = Column(Integer, default=10, nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id",  ondelete="SET NULL"), nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -25,7 +24,6 @@ class Product(Base):
         nullable=False,
     )
 
-    # Relationships
     category     = relationship("Category",    back_populates="products")
     supplier     = relationship("Supplier",    back_populates="products")
     transactions = relationship(

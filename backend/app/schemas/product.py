@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
-
 class ProductCreate(BaseModel):
     name:        str
     sku:         str
@@ -14,7 +13,6 @@ class ProductCreate(BaseModel):
     category_id: Optional[int]  = None
     supplier_id: Optional[int]  = None
 
-
 class ProductUpdate(BaseModel):
     name:        Optional[str]   = None
     sku:         Optional[str]   = None
@@ -24,7 +22,6 @@ class ProductUpdate(BaseModel):
     threshold:   Optional[int]   = None
     category_id: Optional[int]   = None
     supplier_id: Optional[int]   = None
-
 
 class ProductResponse(BaseModel):
     id:          int
@@ -40,7 +37,6 @@ class ProductResponse(BaseModel):
     updated_at:  datetime
 
     model_config = {"from_attributes": True}
-
 
 class ProductWithDetails(ProductResponse):
     """ProductResponse extended with human-readable category/supplier names."""
