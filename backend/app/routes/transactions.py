@@ -25,7 +25,7 @@ def _to_response(t: Transaction) -> TransactionResponse:
     )
 
 @router.get(
-    "/",
+    "",
     response_model=List[TransactionResponse],
     summary="List transactions with optional filters",
 )
@@ -69,7 +69,7 @@ def list_transactions(
     return [_to_response(t) for t in transactions]
 
 @router.post(
-    "/",
+    "",
     response_model=TransactionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Record a stock movement (admin only)",
